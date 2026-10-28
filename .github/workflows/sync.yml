@@ -1,0 +1,43 @@
+# Pulls tier roles from Discord every 15 minutes and commits website/players.js
+# when something changed. Cloudflare Pages redeploys the site on every commit.
+name: Sync tiers from Discord
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: # "Run workflow" button on the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync from Discord
+        run: node discord-sync/sync.js
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_SERVER_ID: "1552741595760304189"
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet website/players.js; then
+            echo "No tier changes."
+            exit 0
+          fi
+          git config user.name "MC Combat Tiers Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/players.js
+          git commit -m "Sync tiers from Discord"
+          git push

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MC Combat Tiers</title>
+  <link rel="icon" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#overall">
+        <img src="logo.png" alt="">
+        <span>MC Combat <b>Tiers</b></span>
+      </a>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search player..." autocomplete="off">
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav id="modes" class="modes"></nav>
+    <section id="view"></section>
+  </main>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="players.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
