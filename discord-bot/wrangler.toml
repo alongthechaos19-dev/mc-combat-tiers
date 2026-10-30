@@ -1,0 +1,14 @@
+name = "mc-combat-tiers-bot"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# Filled in by register-commands.js (public, not a secret)
+DISCORD_PUBLIC_KEY = "b250208470a7b0636be9b0b8599525cb7ca4bb62af8d940d8e1e4b2690cc702f"
+# Who can use /tier. Nobody else can, even admins.
+# "Verified Tester - Sword" can only tier Sword, "Verified Tester - Crystal" only Vanilla, etc.
+TESTER_ROLE_PREFIX = "Verified Tester"
+# These roles can tier every gamemode (comma separated, exact role names)
+ALL_MODES_ROLES = "Owner, Staff, Temporary Tester (All Gamemodes)"
+
+# The bot token is NOT stored here. It's a Cloudflare secret called DISCORD_TOKEN.
