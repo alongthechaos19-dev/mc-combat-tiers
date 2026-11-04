@@ -10,6 +10,7 @@ const MODE_ALIASES = {
   sword: "sword",
   axe: "axe",
   mace: "mace",
+  spearmace: "spearmace", spear: "spearmace",
   diamondsmp: "diamondsmp", diasmp: "diamondsmp", dsmp: "diamondsmp",
   cart: "cart", minecart: "cart", cartpvp: "cart",
 };
@@ -22,11 +23,11 @@ const REGIONS = {
   na: "NA", eu: "EU", as: "AS", au: "AU", sa: "SA", me: "ME", af: "AF",
 };
 
-const MODE_ORDER = ["vanilla", "uhc", "pot", "nethop", "smp", "sword", "axe", "mace", "diamondsmp", "cart"];
+const MODE_ORDER = ["vanilla", "uhc", "pot", "nethop", "smp", "sword", "axe", "mace", "spearmace", "diamondsmp", "cart"];
 
 const MODE_NAMES = {
   vanilla: "Vanilla", uhc: "UHC", pot: "Pot", nethop: "NethOP", smp: "SMP",
-  sword: "Sword", axe: "Axe", mace: "Mace", diamondsmp: "Diamond SMP", cart: "Cart",
+  sword: "Sword", axe: "Axe", mace: "Mace", spearmace: "Spear Mace", diamondsmp: "Diamond SMP", cart: "Cart",
 };
 
 const squash = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");

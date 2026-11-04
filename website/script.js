@@ -7,9 +7,13 @@ const MODES = [
   { key: "sword",      name: "Sword" },
   { key: "axe",        name: "Axe" },
   { key: "mace",       name: "Mace" },
+  { key: "spearmace",  name: "Spear Mace" },
   { key: "diamondsmp", name: "Diamond SMP" },
   { key: "cart",       name: "Cart" },
 ];
+
+// Icon file for a gamemode (icons/<key>.png unless the mode sets its own)
+const iconSrc = (m) => m.icon || `icons/${m.key}.png`;
 
 // Points each tier is worth toward the overall ranking
 const TIER_POINTS = { 1: 60, 2: 30, 3: 15, 4: 6, 5: 2 };
@@ -30,7 +34,7 @@ function head(name, size = 64) {
 function tierBadge(t, modeKey) {
   const mode = MODES.find((m) => m.key === modeKey);
   return `<span class="badge t${t}" title="${mode ? mode.name : ""} — Tier ${t}">
-    ${mode ? `<img src="icons/${mode.key}.png" alt="">` : ""}T${t}</span>`;
+    ${mode ? `<img src="${iconSrc(mode)}" alt="">` : ""}T${t}</span>`;
 }
 
 function regionTag(r) {
@@ -42,7 +46,7 @@ function renderModes(active) {
   const tabs = [{ key: "overall", name: "Overall" }, ...MODES];
   $("#modes").innerHTML = tabs.map((m) => `
     <a href="#${m.key}" class="mode ${m.key === active ? "active" : ""}">
-      ${m.key === "overall" ? `<span class="trophy">&#127942;</span>` : `<img src="icons/${m.key}.png" alt="">`}
+      ${m.key === "overall" ? `<span class="trophy">&#127942;</span>` : `<img src="${iconSrc(m)}" alt="">`}
       <span>${m.name}</span>
     </a>`).join("");
 }
@@ -120,7 +124,7 @@ function openPlayer(name) {
       ${MODES.map((m) => {
         const t = p.tiers[m.key];
         return `<a href="#${m.key}" class="pm-mode ${t ? "" : "unranked"}">
-          <img src="icons/${m.key}.png" alt="">
+          <img src="${iconSrc(m)}" alt="">
           <span>${m.name}</span>
           <b class="${t ? "t" + t : ""}">${t ? "T" + t : "—"}</b>
         </a>`;
