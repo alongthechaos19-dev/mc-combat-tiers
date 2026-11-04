@@ -1,10 +1,10 @@
 // ============================================================
 //  MC Combat Tiers — player list
 //  AUTO-GENERATED from Discord by discord-sync/sync.js
-//  Last synced: 10/30/2026, 12:45:56 AM
+//  Last synced: 11/4/2026, 11:37:16 PM
 //
 //  Manual edits here get overwritten next time you sync.
-//  To fix someone's Minecraft name, use discord-sync/names.json.
+//  To fix someone's Minecraft name, use website/names.json.
 // ============================================================
 
 const PLAYERS = [
