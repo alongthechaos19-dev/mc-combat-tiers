@@ -141,15 +141,15 @@ a { color: inherit; text-decoration: none; }
 .pm-mode:hover { outline: 1px solid var(--accent); }
 
 /* Responsive */
-/* Titles */
-.title { font-weight: 700; }
-.title-rookie { color: #8a90a6; }
-.title-novice { color: #9fb7d9; }
-.title-cadet { background: linear-gradient(90deg, #34d399, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
-.title-specialist { color: #6fbfdd; }
-.title-ace { color: #c3a2ff; }
-.title-master { color: #ff8f6b; }
-.title-grandmaster { color: var(--t1); text-shadow: 0 0 8px rgba(245,197,66,.45); }
+/* Titles (gradient text) */
+.title { font-weight: 800; -webkit-background-clip: text; background-clip: text; color: transparent; }
+.title-rookie      { background-image: linear-gradient(90deg, #8a90a6, #c3c8d6); }
+.title-novice      { background-image: linear-gradient(90deg, #9fb7d9, #c7b8f5); }
+.title-cadet       { background-image: linear-gradient(90deg, #34d399, #22d3ee); }
+.title-specialist  { background-image: linear-gradient(90deg, #38bdf8, #818cf8); }
+.title-ace         { background-image: linear-gradient(90deg, #c084fc, #f472b6); }
+.title-master      { background-image: linear-gradient(90deg, #fb923c, #f43f5e); }
+.title-grandmaster { background-image: linear-gradient(90deg, #fde047, #f59e0b, #fde047); filter: drop-shadow(0 0 6px rgba(245,197,66,.45)); }
 .pm-top .title { font-size: 14px; }
 
 /* Hover tooltip (peak tier) */
