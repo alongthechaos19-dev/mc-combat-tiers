@@ -12,53 +12,10 @@ const path = require("path");
 
 const API = "https://discord.com/api/v10";
 const CONFIG_FILE = path.join(__dirname, "config.json");
-const NAMES_FILE = path.join(__dirname, "names.json");
+const NAMES_FILE = path.join(__dirname, "..", "website", "names.json");
 const PLAYERS_FILE = path.join(__dirname, "..", "website", "players.js");
 
-const { MODE_ORDER, parseTierRole, parseRegionRole } = require("./roles");
-
-// Turn the raw Discord roles + members into the site's player list
-function buildPlayers(roles, members, nameOverrides = {}) {
-  const tierRoles = new Map();
-  const regionRoles = new Map();
-  const unknown = [];
-  for (const role of roles) {
-    const t = parseTierRole(role.name);
-    if (t) tierRoles.set(role.id, t);
-    else if (/^T\s*[1-5]\s*[-–—:|]?\s*[a-z]/i.test(role.name.trim())) unknown.push(role.name);
-    const r = parseRegionRole(role.name);
-    if (r) regionRoles.set(role.id, r);
-  }
-
-  const players = [];
-  for (const mem of members) {
-    if (mem.user.bot) continue;
-    const tiers = {};
-    let region = null;
-    for (const id of mem.roles) {
-      const t = tierRoles.get(id);
-      // If someone has two roles for the same mode, keep the better (lower) tier
-      if (t && (!tiers[t.mode] || t.tier < tiers[t.mode])) tiers[t.mode] = t.tier;
-      if (regionRoles.has(id)) region = regionRoles.get(id);
-    }
-    if (!Object.keys(tiers).length) continue;
-
-    // names.json can be keyed by user ID, Discord username, server nickname or display name
-    const discordName = mem.nick || mem.user.global_name || mem.user.username;
-    const name =
-      nameOverrides[mem.user.id] ||
-      nameOverrides[mem.user.username] ||
-      (mem.nick && nameOverrides[mem.nick]) ||
-      (mem.user.global_name && nameOverrides[mem.user.global_name]) ||
-      discordName;
-
-    const sorted = {};
-    for (const k of MODE_ORDER) if (tiers[k]) sorted[k] = tiers[k];
-    players.push({ name: name.trim(), region, tiers: sorted });
-  }
-  players.sort((a, b) => a.name.localeCompare(b.name));
-  return { players, tierRoleCount: tierRoles.size, unknown };
-}
+const { buildPlayers } = require("./roles");
 
 function writePlayersFile(players) {
   const lines = players.map((p) => {
@@ -72,7 +29,7 @@ function writePlayersFile(players) {
 //  Last synced: ${new Date().toLocaleString()}
 //
 //  Manual edits here get overwritten next time you sync.
-//  To fix someone's Minecraft name, use discord-sync/names.json.
+//  To fix someone's Minecraft name, use website/names.json.
 // ============================================================
 
 const PLAYERS = [
@@ -196,4 +153,4 @@ if (require.main === module) {
   main().catch((e) => { console.error("\nERROR: " + e.message); process.exitCode = 1; });
 }
 
-module.exports = { parseTierRole, buildPlayers };
+module.exports = { buildPlayers };

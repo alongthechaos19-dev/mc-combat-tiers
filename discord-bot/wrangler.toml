@@ -5,10 +5,22 @@ compatibility_date = "2025-06-01"
 [vars]
 # Filled in by register-commands.js (public, not a secret)
 DISCORD_PUBLIC_KEY = "b250208470a7b0636be9b0b8599525cb7ca4bb62af8d940d8e1e4b2690cc702f"
+GUILD_ID = "1552741595760304189"
+SITE_URL = "https://mc-combat-tiers.pages.dev"
 # Who can use /tier. Nobody else can, even admins.
 # "Verified Tester - Sword" can only tier Sword, "Verified Tester - Crystal" only Vanilla, etc.
 TESTER_ROLE_PREFIX = "Verified Tester"
 # These roles can tier every gamemode (comma separated, exact role names)
 ALL_MODES_ROLES = "Owner, Staff, Temporary Tester (All Gamemodes)"
+# Days before a player can be retested in the same gamemode
+COOLDOWN_DAYS = "14"
+# These roles can use /tier ignore_cooldown:True
+COOLDOWN_OVERRIDE_ROLES = "Owner, Staff"
+
+# Tier history (peak tiers + cooldowns)
+[[d1_databases]]
+binding = "DB"
+database_name = "mc-combat-tiers"
+database_id = "89f1ee16-6ee6-447f-b0b4-f6f17cb997c4"
 
 # The bot token is NOT stored here. It's a Cloudflare secret called DISCORD_TOKEN.

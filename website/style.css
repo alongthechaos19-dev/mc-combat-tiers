@@ -87,7 +87,7 @@ a { color: inherit; text-decoration: none; }
 .board { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 40px; }
 .board-head, .row { display: grid; grid-template-columns: 56px minmax(180px, 1.2fr) 90px 2fr; align-items: center; gap: 12px; padding: 12px 18px; }
 .board-head { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid var(--line); }
-.row { width: 100%; border-bottom: 1px solid var(--line); transition: background .15s; }
+.row { width: 100%; border-bottom: 1px solid var(--line); transition: background .15s; cursor: pointer; }
 .row:last-child { border-bottom: 0; }
 .row:hover { background: var(--panel-2); }
 .rank { font-size: 20px; font-weight: 800; color: var(--muted); }
@@ -134,12 +134,29 @@ a { color: inherit; text-decoration: none; }
 .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
 .pm-mode { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); font-size: 14px; font-weight: 600; }
 .pm-mode img { width: 24px; height: 24px; }
-.pm-mode span { flex: 1; }
+.pm-mode span { flex: 1; display: flex; flex-direction: column; }
+.pm-mode small { color: var(--muted); font-size: 11px; font-weight: 500; }
 .pm-mode b { font-weight: 800; }
 .pm-mode.unranked { opacity: .45; }
 .pm-mode:hover { outline: 1px solid var(--accent); }
 
 /* Responsive */
+/* Titles */
+.title { font-weight: 700; }
+.title-rookie { color: #8a90a6; }
+.title-novice { color: #9fb7d9; }
+.title-cadet { color: #7fe0a0; }
+.title-specialist { color: #6fbfdd; }
+.title-ace { color: #c3a2ff; }
+.title-master { color: #ff8f6b; }
+.title-grandmaster { color: var(--t1); text-shadow: 0 0 8px rgba(245,197,66,.45); }
+.pm-top .title { font-size: 14px; }
+
+/* Hover tooltip (peak tier) */
+.tip { position: fixed; z-index: 60; pointer-events: none; background: #0b0d12; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.tip[hidden] { display: none; }
+.badge[data-tip] { cursor: help; }
+
 @media (max-width: 900px) {
   .tiers { grid-template-columns: repeat(2, 1fr); }
 }
