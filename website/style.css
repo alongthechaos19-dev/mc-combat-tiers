@@ -155,7 +155,6 @@ a { color: inherit; text-decoration: none; }
 /* Hover tooltip (peak tier) */
 .tip { position: fixed; z-index: 60; pointer-events: none; background: #0b0d12; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 .tip[hidden] { display: none; }
-.badge[data-tip] { cursor: help; }
 
 @media (max-width: 900px) {
   .tiers { grid-template-columns: repeat(2, 1fr); }

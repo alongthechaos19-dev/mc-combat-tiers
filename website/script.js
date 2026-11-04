@@ -52,12 +52,6 @@ function titleTag(pts) {
   return `<span class="title title-${t.cls}">${t.name}</span>`;
 }
 
-// Hover text for a tier: "Sword — Tier 3 · Peak: Tier 2"
-function tierTip(p, key) {
-  const t = p.tiers[key], peak = p.peak?.[key] || t;
-  return `${modeName(key)} — Tier ${t} · Peak: Tier ${peak}`;
-}
-
 function head(name, size = 64) {
   const n = esc(name);
   return `<img class="head" src="https://mc-heads.net/avatar/${encodeURIComponent(name)}/${size}" alt="${n}" loading="lazy"
@@ -67,7 +61,7 @@ function head(name, size = 64) {
 function tierBadge(p, key) {
   const mode = MODES.find((m) => m.key === key);
   const t = p.tiers[key];
-  return `<span class="badge t${t}" tabindex="0" data-tip="${esc(tierTip(p, key))}">
+  return `<span class="badge t${t}" title="${esc(modeName(key))} — Tier ${t}">
     ${mode ? `<img src="${iconSrc(mode)}" alt="">` : ""}T${t}</span>`;
 }
 
@@ -124,7 +118,7 @@ function renderMode(key) {
         <div class="col-head t${t}">Tier ${t}</div>
         <div class="col-body">
           ${list.length ? list.map((p) => `
-            <button class="chip" data-player="${esc(p.name)}" data-tip="${esc(tierTip(p, key))}">
+            <button class="chip" data-player="${esc(p.name)}">
               ${head(p.name, 32)}<span>${esc(p.name)}</span>${regionTag(p.region)}
             </button>`).join("") : `<div class="none">No players</div>`}
         </div>
@@ -163,15 +157,13 @@ function openPlayer(name) {
     <div class="pm-grid">
       ${MODES.map((m) => {
         const t = p.tiers[m.key];
+        // Peak only shows on hover, and only when they used to be better than they are now
         const peak = p.peak?.[m.key];
+        const tip = peak && (!t || peak < t) ? ` data-tip="Peak - T${peak}" data-peak="${peak}"` : "";
         const retest = p.retest?.[m.key];
-        const notes = [
-          peak && peak !== t ? `Peak T${peak}` : "",
-          retest ? `Retest ${shortDate(retest)}` : "",
-        ].filter(Boolean).join(" · ");
-        return `<a href="#${m.key}" class="pm-mode ${t ? "" : "unranked"}">
+        return `<a href="#${m.key}" class="pm-mode ${t ? "" : "unranked"}"${tip}>
           <img src="${iconSrc(m)}" alt="">
-          <span>${m.name}${notes ? `<small>${notes}</small>` : ""}</span>
+          <span>${m.name}${retest ? `<small>Retest ${shortDate(retest)}</small>` : ""}</span>
           <b class="${t ? "t" + t : ""}">${t ? "T" + t : "—"}</b>
         </a>`;
       }).join("")}
@@ -213,7 +205,9 @@ document.addEventListener("keydown", (e) => {
 /* ---------- Tooltip (peak tier on hover) ---------- */
 function showTip(el) {
   const tip = $("#tip");
-  tip.textContent = el.dataset.tip;
+  // Peak tooltips show the tier in its own color
+  if (el.dataset.peak) tip.innerHTML = `Peak - <span class="t${Number(el.dataset.peak)}">T${Number(el.dataset.peak)}</span>`;
+  else tip.textContent = el.dataset.tip;
   tip.hidden = false;
   const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
   const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
