@@ -28,6 +28,35 @@ const COMMANDS = [
       { type: 5, name: "ignore_cooldown", description: "Staff/Owner only: retest before the cooldown is over", required: false },
     ],
   },
+  {
+    name: "leaderboard",
+    description: "Show the top 10 players overall or in a gamemode",
+    contexts: [0],
+    options: [
+      {
+        type: 3, name: "gamemode", description: "Leave empty for overall", required: false,
+        choices: [{ name: "Overall", value: "overall" }].concat(MODE_ORDER.map((k) => ({ name: MODE_NAMES[k], value: k }))),
+      },
+    ],
+  },
+  {
+    name: "username",
+    description: "Set the Minecraft username shown on the website",
+    contexts: [0],
+    options: [
+      {
+        type: 1, name: "set", description: "Set your Minecraft username",
+        options: [
+          { type: 3, name: "name", description: "Your Minecraft username", required: true, min_length: 3, max_length: 16 },
+          { type: 6, name: "player", description: "Staff/Owner only: set it for someone else", required: false },
+        ],
+      },
+      {
+        type: 1, name: "reset", description: "Go back to showing your Discord name",
+        options: [{ type: 6, name: "player", description: "Staff/Owner only: reset someone else", required: false }],
+      },
+    ],
+  },
 ];
 
 async function discord(method, route, body) {
@@ -43,7 +72,7 @@ async function discord(method, route, body) {
 (async () => {
   const app = await discord("GET", "/applications/@me");
   await discord("PUT", `/applications/${app.id}/guilds/${config.serverId}/commands`, COMMANDS);
-  console.log("Registered /tier in your server.");
+  console.log("Registered " + COMMANDS.map((c) => "/" + c.name).join(", ") + " in your server.");
 
   const tomlFile = path.join(__dirname, "wrangler.toml");
   const toml = fs.readFileSync(tomlFile, "utf8").replace(/DISCORD_PUBLIC_KEY = ".*"/, `DISCORD_PUBLIC_KEY = "${app.verify_key}"`);

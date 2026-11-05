@@ -15,7 +15,7 @@
 //  change the roles with the bot token (DISCORD_TOKEN secret).
 // ============================================================
 
-import { MODE_NAMES, buildPlayers, parseMode, parseTierRole } from "../discord-sync/roles.js";
+import { MODE_NAMES, buildPlayers, parseMode, parseTierRole, points, titleFor } from "../discord-sync/roles.js";
 
 const API = "https://discord.com/api/v10";
 const DAY = 24 * 60 * 60 * 1000;
@@ -56,6 +56,28 @@ export default {
           .then((msg) => editReply(interaction, msg)),
       );
       return json({ type: 5 });
+    }
+
+    if (interaction.type === 2 && interaction.data.name === "leaderboard") {
+      ctx.waitUntil(
+        handleLeaderboard(interaction, env)
+          .catch((e) => "❌ " + e.message)
+          .then((msg) => editReply(interaction, msg)),
+      );
+      return json({ type: 5 });
+    }
+
+    if (interaction.type === 2 && interaction.data.name === "username") {
+      ctx.waitUntil(
+        handleUsername(interaction, env)
+          .then(async (msg) => {
+            await caches.default.delete(new Request(new URL("/api/players", request.url)));
+            return msg;
+          })
+          .catch((e) => "❌ " + e.message)
+          .then((msg) => editReply(interaction, msg)),
+      );
+      return json({ type: 5, data: { flags: 64 } }); // only the person who used it sees the reply
     }
 
     return json({ type: 4, data: { content: "Unknown command.", flags: 64 } });
@@ -168,13 +190,26 @@ async function playersApi(request, env, ctx) {
   const cached = await caches.default.match(cacheKey);
   if (cached) return cached;
 
-  const [roles, members, names, history] = await Promise.all([
+  const players = await livePlayers(env);
+  const res = new Response(JSON.stringify({ players, updated: Date.now() }), {
+    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": `public, max-age=${PLAYERS_CACHE_SECONDS}` },
+  });
+  ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+  return res;
+}
+
+// Everyone with a tier, from Discord roles + the DB (peak tiers, retest dates)
+async function livePlayers(env) {
+  const [roles, members, names, history, linked] = await Promise.all([
     discord(env, "GET", `/guilds/${env.GUILD_ID}/roles`),
     fetchAllMembers(env),
     fetch(env.SITE_URL + "/names.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
     env.DB.prepare("SELECT user_id, mode, tier, prev_tier, at FROM tier_history").all(),
+    env.DB.prepare("SELECT user_id, mc_name FROM usernames").all(),
   ]);
   delete names._comment;
+  // Names set with /username win over names.json (buildPlayers checks user IDs first)
+  for (const u of linked.results) names[u.user_id] = u.mc_name;
 
   // Best tier ever held (lower = better) and when they were last tested, per player + gamemode
   const peaks = {}, tested = {};
@@ -188,19 +223,102 @@ async function playersApi(request, env, ctx) {
   }
 
   const cooldownMs = Number(env.COOLDOWN_DAYS) * DAY;
-  const players = buildPlayers(roles, members, names).players.map(({ id, ...p }) => {
+  return buildPlayers(roles, members, names).players.map(({ id, ...p }) => {
     const peak = { ...p.tiers };
     for (const [m, t] of Object.entries(peaks[id] || {})) if (!peak[m] || t < peak[m]) peak[m] = t;
     const retest = {};
     for (const [m, at] of Object.entries(tested[id] || {})) if (at + cooldownMs > Date.now()) retest[m] = at + cooldownMs;
     return { ...p, peak, retest };
   });
+}
 
-  const res = new Response(JSON.stringify({ players, updated: Date.now() }), {
-    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": `public, max-age=${PLAYERS_CACHE_SECONDS}` },
-  });
-  ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
-  return res;
+/* ---------- /username set | reset ---------- */
+
+async function handleUsername(interaction, env) {
+  const sub = interaction.data.options?.[0];
+  const opts = Object.fromEntries((sub?.options || []).map((o) => [o.name, o.value]));
+  const me = interaction.member.user.id;
+  const target = opts.player || me;
+
+  // Setting someone else's name is for Staff/Owner only
+  if (target !== me) {
+    const roles = await discord(env, "GET", `/guilds/${interaction.guild_id}/roles`);
+    if (!hasAnyRole(interaction.member, roles, env.COOLDOWN_OVERRIDE_ROLES)) {
+      throw new Error(`Only ${env.COOLDOWN_OVERRIDE_ROLES} can change someone else's username.`);
+    }
+  }
+  const who = target === me ? "Your" : `<@${target}>'s`;
+
+  if (sub?.name === "reset") {
+    await env.DB.prepare("DELETE FROM usernames WHERE user_id = ?").bind(target).run();
+    return `✅ ${who} Minecraft username was removed. The website goes back to the default name.`;
+  }
+
+  const wanted = String(opts.name || "").trim();
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(wanted)) {
+    throw new Error("That isn't a valid Minecraft username (3–16 letters, numbers or _).");
+  }
+
+  // Ask Mojang if the account exists, and use its exact capitalization
+  const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(wanted)}`);
+  if (res.status === 404 || res.status === 204) throw new Error(`There's no Minecraft account called **${wanted}**.`);
+  const mcName = res.ok ? (await res.json()).name : wanted; // if Mojang is down, trust what they typed
+
+  const taken = await env.DB.prepare("SELECT user_id FROM usernames WHERE mc_name = ? COLLATE NOCASE AND user_id != ?")
+    .bind(mcName, target).first();
+  if (taken) throw new Error(`**${mcName}** is already linked to <@${taken.user_id}>. Ask Staff if that's wrong.`);
+
+  await env.DB.prepare(
+    "INSERT INTO usernames (user_id, mc_name, set_by, at) VALUES (?, ?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET mc_name = excluded.mc_name, set_by = excluded.set_by, at = excluded.at",
+  ).bind(target, mcName, me, Date.now()).run();
+
+  return `✅ ${who} Minecraft username is now **${mcName}**. The website shows it right away.`;
+}
+
+/* ---------- /leaderboard ---------- */
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+const LEADERBOARD_SIZE = 10;
+// Names like "__gl1tch" would otherwise turn into Discord formatting
+const escapeMd = (s) => s.replace(/([\\*_`~|>])/g, "\\$1");
+
+async function handleLeaderboard(interaction, env) {
+  const mode = interaction.data.options?.find((o) => o.name === "gamemode")?.value || "overall";
+  const players = await livePlayers(env);
+  const place = (i) => MEDALS[i] || `\`${i + 1}.\``;
+
+  let title, lines, url, thumb;
+  if (mode === "overall") {
+    const ranked = players
+      .map((p) => ({ ...p, pts: points(p.tiers) }))
+      .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
+    title = "🏆 Overall leaderboard";
+    lines = ranked.slice(0, LEADERBOARD_SIZE).map((p, i) =>
+      `${place(i)} **${escapeMd(p.name)}** — ${p.pts} points · ${titleFor(p.pts)}`);
+    url = env.SITE_URL;
+    thumb = `${env.SITE_URL}/logo.png`;
+  } else {
+    const ranked = players
+      .filter((p) => p.tiers[mode])
+      .sort((a, b) => a.tiers[mode] - b.tiers[mode] || a.name.localeCompare(b.name));
+    title = `${MODE_NAMES[mode]} leaderboard`;
+    lines = ranked.slice(0, LEADERBOARD_SIZE).map((p, i) =>
+      `${place(i)} **${escapeMd(p.name)}** — Tier ${p.tiers[mode]}`);
+    url = `${env.SITE_URL}/#${mode}`;
+    thumb = `${env.SITE_URL}/icons/${mode}.png`;
+  }
+
+  return {
+    embeds: [{
+      title,
+      url,
+      color: 0xf5c542,
+      thumbnail: { url: thumb },
+      description: lines.length ? lines.join("\n") : "Nobody is ranked here yet.",
+      footer: { text: "Full rankings at mc-combat-tiers.pages.dev" },
+    }],
+  };
 }
 
 async function fetchAllMembers(env) {
@@ -229,11 +347,13 @@ async function discord(env, method, route, reason) {
   throw new Error(`Discord error ${res.status}: ${await res.text()}`);
 }
 
-async function editReply(interaction, content) {
+// reply is either text or a message object like { embeds: [...] }
+async function editReply(interaction, reply) {
+  const message = typeof reply === "string" ? { content: reply } : reply;
   await fetch(`${API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    body: JSON.stringify({ ...message, allowed_mentions: { parse: [] } }),
   });
 }
 

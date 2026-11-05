@@ -9,3 +9,12 @@ CREATE TABLE IF NOT EXISTS tier_history (
   at         INTEGER NOT NULL   -- unix ms
 );
 CREATE INDEX IF NOT EXISTS idx_history_user_mode ON tier_history (user_id, mode);
+
+-- Minecraft usernames players set with /username set
+CREATE TABLE IF NOT EXISTS usernames (
+  user_id  TEXT PRIMARY KEY,
+  mc_name  TEXT NOT NULL,
+  set_by   TEXT,
+  at       INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_usernames_mc ON usernames (mc_name COLLATE NOCASE);

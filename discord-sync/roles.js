@@ -30,6 +30,20 @@ const MODE_NAMES = {
   sword: "Sword", axe: "Axe", mace: "Mace", spearmace: "Spear Mace", diamondsmp: "Diamond SMP", cart: "Cart",
 };
 
+// Keep these in sync with TIER_POINTS / TITLES in website/script.js
+const TIER_POINTS = { 1: 60, 2: 30, 3: 15, 4: 6, 5: 2 };
+const TITLES = [
+  { min: 450, name: "Combat Grandmaster" },
+  { min: 300, name: "Combat Master" },
+  { min: 250, name: "Combat Ace" },
+  { min: 125, name: "Combat Specialist" },
+  { min: 50,  name: "Combat Cadet" },
+  { min: 20,  name: "Combat Novice" },
+  { min: 0,   name: "Combat Rookie" },
+];
+const points = (tiers) => Object.values(tiers).reduce((sum, t) => sum + (TIER_POINTS[t] || 0), 0);
+const titleFor = (pts) => TITLES.find((t) => pts >= t.min).name;
+
 const squash = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 // "Netherite Pot" -> "nethop"
@@ -92,5 +106,5 @@ function buildPlayers(roles, members, nameOverrides = {}) {
   return { players, tierRoleCount: tierRoles.size, unknown };
 }
 
-module.exports = { MODE_ORDER, MODE_NAMES, parseMode, parseTierRole, parseRegionRole, buildPlayers };
+module.exports = { MODE_ORDER, MODE_NAMES, TIER_POINTS, points, titleFor, parseMode, parseTierRole, parseRegionRole, buildPlayers };
 
