@@ -34,6 +34,12 @@ a { color: inherit; text-decoration: none; }
 .brand b { color: var(--t1); }
 
 .top-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); transition: color .15s, border-color .15s;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
 .discord-btn {
   flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
   background: #5865f2; color: #fff; transition: background .15s, transform .15s;
@@ -147,6 +153,19 @@ a { color: inherit; text-decoration: none; }
 .pm-mode.unranked { opacity: .45; }
 .pm-mode:hover { outline: 1px solid var(--accent); }
 
+/* Info popup */
+.info h2 { margin: 0 0 4px; font-size: 22px; }
+.info-sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+.info h3 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+.info-tiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.info-tier { background: var(--panel-2); border-radius: 10px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.info-tier b { font-size: 15px; font-weight: 800; }
+.info-tier span { color: var(--muted); font-size: 12px; }
+.info-ranks { display: flex; flex-direction: column; gap: 6px; }
+.info-rank { display: flex; justify-content: space-between; align-items: center; background: var(--panel-2); border-radius: 10px; padding: 10px 14px; }
+.info-rank .title { font-size: 15px; }
+.info-rank > span:last-child { color: var(--muted); font-size: 13px; font-weight: 600; }
+
 /* Responsive */
 /* Titles (gradient text) */
 .title { font-weight: 800; -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -176,4 +195,5 @@ a { color: inherit; text-decoration: none; }
   .board-head span:last-child { display: none; }
   .row .badges { grid-column: 1 / -1; }
   .tiers { grid-template-columns: 1fr; }
+  .info-tiers { grid-template-columns: repeat(3, 1fr); }
 }

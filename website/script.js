@@ -171,6 +171,30 @@ function openPlayer(name) {
   $("#modal").hidden = false;
 }
 
+/* ---------- Info popup: ranks and points ---------- */
+function openInfo() {
+  openName = null;
+  $("#modal-body").innerHTML = `
+    <div class="info">
+      <h2>Points and ranks</h2>
+      <p class="info-sub">Your points are every tier you hold, added up across all gamemodes.</p>
+
+      <h3>Points per tier</h3>
+      <div class="info-tiers">
+        ${[1, 2, 3, 4, 5].map((t) => `
+          <div class="info-tier"><b class="t${t}">Tier ${t}</b><span>${TIER_POINTS[t]} points</span></div>`).join("")}
+      </div>
+
+      <h3>Ranks</h3>
+      <div class="info-ranks">
+        ${TITLES.map((r) => `
+          <div class="info-rank"><span class="title title-${r.cls}">${r.name}</span><span>${r.min}+ points</span></div>`).join("")}
+      </div>
+    </div>`;
+  $("#modal").hidden = false;
+}
+$("#info-btn").addEventListener("click", openInfo);
+
 function closeModal() { $("#modal").hidden = true; openName = null; }
 
 /* ---------- Search ---------- */
