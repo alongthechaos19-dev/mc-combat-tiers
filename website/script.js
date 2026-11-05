@@ -157,9 +157,9 @@ function openPlayer(name) {
     <div class="pm-grid">
       ${MODES.map((m) => {
         const t = p.tiers[m.key];
-        // Peak only shows on hover, and only when they used to be better than they are now
+        // Peak only shows on hover, only for T3 or better, and only when they used to be better than they are now
         const peak = p.peak?.[m.key];
-        const tip = peak && (!t || peak < t) ? ` data-tip="Peak - T${peak}" data-peak="${peak}"` : "";
+        const tip = peak && peak <= 3 && (!t || peak < t) ? ` data-tip="Peak - T${peak}" data-peak="${peak}"` : "";
         const retest = p.retest?.[m.key];
         return `<a href="#${m.key}" class="pm-mode ${t ? "" : "unranked"}"${tip}>
           <img src="${iconSrc(m)}" alt="">
