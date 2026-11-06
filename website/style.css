@@ -153,6 +153,18 @@ a { color: inherit; text-decoration: none; }
 .pm-mode.unranked { opacity: .45; }
 .pm-mode:hover { outline: 1px solid var(--accent); }
 
+/* Filter buttons */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 16px; }
+.filter { padding: 7px 14px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; transition: .15s; }
+.filter:hover { color: var(--text); border-color: #3a4157; }
+.filter.active { color: var(--text); background: var(--panel-2); border-color: var(--accent); }
+
+/* Top 3 overall: gold / silver / bronze names */
+.name-top1, .name-top2, .name-top3 { -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
+.name-top1 { background-image: linear-gradient(90deg, #fff1a8, #f5c542 45%, #e09b1a); filter: drop-shadow(0 0 6px rgba(245,197,66,.35)); }
+.name-top2 { background-image: linear-gradient(90deg, #ffffff, #c9d1e0 50%, #8e9ab3); }
+.name-top3 { background-image: linear-gradient(90deg, #ffd0a8, #d98a4a 50%, #a35a23); }
+
 /* Info popup */
 .info h2 { margin: 0 0 4px; font-size: 22px; }
 .info-sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }

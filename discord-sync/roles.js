@@ -63,8 +63,13 @@ function parseRegionRole(roleName) {
   return REGIONS[squash(roleName)] || null;
 }
 
-// Turn the raw Discord roles + members into the site's player list
-function buildPlayers(roles, members, nameOverrides = {}) {
+// Turn the raw Discord roles + members into the site's player list.
+// groups = { staff: "Owner, Staff", creator: "Creator" } tags players who have any of those roles.
+function buildPlayers(roles, members, nameOverrides = {}, groups = {}) {
+  const groupRoles = Object.entries(groups).map(([group, list]) => {
+    const names = list.split(",").map((s) => s.trim().toLowerCase());
+    return [group, new Set(roles.filter((r) => names.includes(r.name.trim().toLowerCase())).map((r) => r.id))];
+  });
   const tierRoles = new Map();
   const regionRoles = new Map();
   const unknown = [];
@@ -100,7 +105,8 @@ function buildPlayers(roles, members, nameOverrides = {}) {
 
     const sorted = {};
     for (const k of MODE_ORDER) if (tiers[k]) sorted[k] = tiers[k];
-    players.push({ id: mem.user.id, name: name.trim(), region, tiers: sorted });
+    const inGroups = groupRoles.filter(([, ids]) => mem.roles.some((id) => ids.has(id))).map(([g]) => g);
+    players.push({ id: mem.user.id, name: name.trim(), region, tiers: sorted, groups: inGroups });
   }
   players.sort((a, b) => a.name.localeCompare(b.name));
   return { players, tierRoleCount: tierRoles.size, unknown };

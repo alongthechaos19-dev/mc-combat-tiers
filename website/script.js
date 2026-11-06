@@ -52,6 +52,31 @@ function titleTag(pts) {
   return `<span class="title title-${t.cls}">${t.name}</span>`;
 }
 
+// Overall position (1, 2, 3...) by points, across everyone; the top 3 get gold/silver/bronze names
+function overallRanks() {
+  const ranked = players.map((p) => ({ n: p.name, pts: points(p) })).filter((x) => x.pts > 0)
+    .sort((a, b) => b.pts - a.pts || a.n.localeCompare(b.n));
+  return new Map(ranked.map((x, i) => [x.n, i + 1]));
+}
+function nameTag(p, ranks, tag = "span") {
+  const pos = ranks.get(p.name);
+  return `<${tag} class="pname${pos <= 3 ? " name-top" + pos : ""}">${esc(p.name)}</${tag}>`;
+}
+
+/* ---------- Filter: All / Staff / Creators ---------- */
+const FILTERS = [
+  { key: "all",     name: "All players" },
+  { key: "staff",   name: "Staff" },
+  { key: "creator", name: "Creators" },
+];
+let filter = "all";
+const shown = () => (filter === "all" ? players : players.filter((p) => p.groups?.includes(filter)));
+
+function renderFilters() {
+  $("#filters").innerHTML = FILTERS.map((f) => `
+    <button class="filter ${f.key === filter ? "active" : ""}" data-filter="${f.key}">${f.name}</button>`).join("");
+}
+
 function head(name, size = 64) {
   const n = esc(name);
   return `<img class="head" src="https://mc-heads.net/avatar/${encodeURIComponent(name)}/${size}" alt="${n}" loading="lazy"
@@ -83,7 +108,8 @@ function renderModes(active) {
 
 /* ---------- Overall leaderboard ---------- */
 function renderOverall() {
-  const ranked = players.map((p) => ({ ...p, pts: points(p) }))
+  const ranks = overallRanks();
+  const ranked = shown().map((p) => ({ ...p, pts: points(p) }))
     .filter((p) => p.pts > 0)
     .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
 
@@ -94,21 +120,22 @@ function renderOverall() {
       <div class="board-head">
         <span>#</span><span>Player</span><span class="hide-sm">Region</span><span>Tiers</span>
       </div>
-      ${ranked.map((p, i) => `
-        <div class="row ${i < 3 ? "top top" + (i + 1) : ""}" role="button" tabindex="0" data-player="${esc(p.name)}">
-          <span class="rank">${i + 1}.</span>
+      ${ranked.map((p) => { const pos = ranks.get(p.name); return `
+        <div class="row ${pos <= 3 ? "top top" + pos : ""}" role="button" tabindex="0" data-player="${esc(p.name)}">
+          <span class="rank">${pos}.</span>
           <span class="who">${head(p.name, 48)}
-            <span class="who-text"><b>${esc(p.name)}</b><small>${titleTag(p.pts)} · ${p.pts} points</small></span>
+            <span class="who-text">${nameTag(p, ranks, "b")}<small>${titleTag(p.pts)} · ${p.pts} points</small></span>
           </span>
           <span class="hide-sm">${regionTag(p.region)}</span>
           <span class="badges">${MODES.filter((m) => p.tiers[m.key]).map((m) => tierBadge(p, m.key)).join("")}</span>
-        </div>`).join("")}
+        </div>`; }).join("")}
     </div>`;
 }
 
 /* ---------- Single gamemode: Tier 1-5 columns ---------- */
 function renderMode(key) {
-  const inMode = players.filter((p) => p.tiers && p.tiers[key]);
+  const ranks = overallRanks();
+  const inMode = shown().filter((p) => p.tiers && p.tiers[key]);
   if (!inMode.length) return empty();
 
   const cols = [1, 2, 3, 4, 5].map((t) => {
@@ -119,7 +146,7 @@ function renderMode(key) {
         <div class="col-body">
           ${list.length ? list.map((p) => `
             <button class="chip" data-player="${esc(p.name)}">
-              ${head(p.name, 32)}<span>${esc(p.name)}</span>${regionTag(p.region)}
+              ${head(p.name, 32)}${nameTag(p, ranks)}${regionTag(p.region)}
             </button>`).join("") : `<div class="none">No players</div>`}
         </div>
       </div>`;
@@ -129,7 +156,8 @@ function renderMode(key) {
 }
 
 function empty() {
-  $("#view").innerHTML = `<div class="empty">No players ranked here yet.</div>`;
+  const who = { staff: "No staff", creator: "No creators" }[filter] || "No players";
+  $("#view").innerHTML = `<div class="empty">${who} ranked here yet.</div>`;
 }
 
 /* ---------- Player modal ---------- */
@@ -139,14 +167,13 @@ function openPlayer(name) {
   const p = players.find((x) => x.name.toLowerCase() === name.toLowerCase());
   if (!p) return closeModal();
   openName = p.name;
-  const ranked = players.map((x) => ({ n: x.name, pts: points(x) })).filter((x) => x.pts > 0)
-    .sort((a, b) => b.pts - a.pts || a.n.localeCompare(b.n));
-  const pos = ranked.findIndex((x) => x.n === p.name) + 1;
+  const ranks = overallRanks();
+  const pos = ranks.get(p.name) || 0;
 
   $("#modal-body").innerHTML = `
     <div class="pm-top">
       <img class="pm-body" src="https://mc-heads.net/body/${encodeURIComponent(p.name)}/120" alt="" onerror="this.style.display='none'">
-      <h2>${esc(p.name)}</h2>
+      ${nameTag(p, ranks, "h2")}
       ${titleTag(points(p))}
       ${regionTag(p.region)}
       <div class="pm-stats">
@@ -210,6 +237,8 @@ $("#search").addEventListener("input", (e) => {
 });
 
 document.addEventListener("click", (e) => {
+  const f = e.target.closest("[data-filter]");
+  if (f) { filter = f.dataset.filter; renderFilters(); route(); return; }
   const btn = e.target.closest("[data-player]");
   if (btn) {
     openPlayer(btn.dataset.player);
@@ -257,6 +286,7 @@ function route() {
   active === "overall" ? renderOverall() : renderMode(active);
 }
 window.addEventListener("hashchange", route);
+renderFilters();
 route();
 
 /* ---------- Live updates ---------- */

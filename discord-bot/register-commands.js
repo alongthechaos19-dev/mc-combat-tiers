@@ -40,6 +40,15 @@ const COMMANDS = [
     ],
   },
   {
+    name: "wipe",
+    description: "Owner only: remove all of a player's tiers, cooldowns and peaks",
+    contexts: [0],
+    options: [
+      { type: 6, name: "player", description: "Who to wipe", required: true },
+      { type: 5, name: "confirm", description: "Set to True to really wipe them", required: true },
+    ],
+  },
+  {
     name: "username",
     description: "Set the Minecraft username shown on the website",
     contexts: [0],

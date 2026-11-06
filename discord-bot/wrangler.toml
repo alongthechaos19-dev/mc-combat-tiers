@@ -16,6 +16,13 @@ ALL_MODES_ROLES = "Owner, Staff, Temporary Tester (All Gamemodes)"
 COOLDOWN_DAYS = "7"
 # These roles can use /tier ignore_cooldown:True
 COOLDOWN_OVERRIDE_ROLES = "Owner, Staff"
+# Only these roles can give (or change) T1 and T2. Testers can give T3-T5.
+HIGH_TIER_ROLES = "Owner, Staff"
+# Only these roles can use /wipe
+WIPE_ROLES = "Owner"
+# Website filter buttons: who counts as Staff and as Creators
+STAFF_ROLES = "Owner, Staff"
+CREATOR_ROLES = "Creator"
 
 # Tier history (peak tiers + cooldowns)
 [[d1_databases]]

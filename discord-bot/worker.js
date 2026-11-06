@@ -67,6 +67,19 @@ export default {
       return json({ type: 5 });
     }
 
+    if (interaction.type === 2 && interaction.data.name === "wipe") {
+      ctx.waitUntil(
+        handleWipe(interaction, env)
+          .then(async (msg) => {
+            await caches.default.delete(new Request(new URL("/api/players", request.url)));
+            return msg;
+          })
+          .catch((e) => "❌ " + e.message)
+          .then((msg) => editReply(interaction, msg)),
+      );
+      return json({ type: 5 });
+    }
+
     if (interaction.type === 2 && interaction.data.name === "username") {
       ctx.waitUntil(
         handleUsername(interaction, env)
@@ -107,6 +120,20 @@ async function handleTier(interaction, env) {
   if (!target) throw new Error("That person isn't in this server.");
 
   const modeName = MODE_NAMES[mode];
+
+  // Testers can give T3-T5 only. T1/T2 (giving them, or changing someone who has one) is HIGH_TIER_ROLES only.
+  const highTierStaff = hasAnyRole(member, roles, env.HIGH_TIER_ROLES);
+  if (!highTierStaff) {
+    const current = roles
+      .filter((r) => target.roles.includes(r.id) && parseTierRole(r.name)?.mode === mode)
+      .map((r) => parseTierRole(r.name).tier);
+    if (tier === 1 || tier === 2) {
+      throw new Error(`Testers can give up to **T3**. Only ${env.HIGH_TIER_ROLES} can give **T${tier}**.`);
+    }
+    if (current.some((t) => t <= 2)) {
+      throw new Error(`<@${userId}> is **T${Math.min(...current)} ${modeName}**. Only ${env.HIGH_TIER_ROLES} can change T1/T2 players.`);
+    }
+  }
 
   // Cooldown: only a real test (not a removal) is blocked, and Staff/Owner can skip it
   if (tier) {
@@ -223,13 +250,42 @@ async function livePlayers(env) {
   }
 
   const cooldownMs = Number(env.COOLDOWN_DAYS) * DAY;
-  return buildPlayers(roles, members, names).players.map(({ id, ...p }) => {
+  return buildPlayers(roles, members, names, { staff: env.STAFF_ROLES, creator: env.CREATOR_ROLES }).players.map(({ id, ...p }) => {
     const peak = { ...p.tiers };
     for (const [m, t] of Object.entries(peaks[id] || {})) if (!peak[m] || t < peak[m]) peak[m] = t;
     const retest = {};
     for (const [m, at] of Object.entries(tested[id] || {})) if (at + cooldownMs > Date.now()) retest[m] = at + cooldownMs;
     return { ...p, peak, retest };
   });
+}
+
+/* ---------- /wipe (Owner only) ---------- */
+
+async function handleWipe(interaction, env) {
+  const opts = Object.fromEntries((interaction.data.options || []).map((o) => [o.name, o.value]));
+  const userId = opts.player;
+  const guildId = interaction.guild_id;
+  const roles = await discord(env, "GET", `/guilds/${guildId}/roles`);
+
+  if (!hasAnyRole(interaction.member, roles, env.WIPE_ROLES)) throw new Error(`Only ${env.WIPE_ROLES} can use /wipe.`);
+  if (!opts.confirm) throw new Error("Nothing was wiped. Run it again with **confirm: True** to wipe them.");
+
+  const target = interaction.data.resolved?.members?.[userId];
+  if (!target) throw new Error("That person isn't in this server.");
+
+  // Every tier role in every gamemode; regions and other roles stay
+  const tierRoles = roles.filter((r) => target.roles.includes(r.id) && parseTierRole(r.name));
+  const reason = `/wipe by ${interaction.member.user.username}`;
+  for (const r of tierRoles) {
+    await discord(env, "DELETE", `/guilds/${guildId}/members/${userId}/roles/${r.id}`, reason);
+  }
+  // History holds cooldowns and peak tiers
+  const { meta } = await env.DB.prepare("DELETE FROM tier_history WHERE user_id = ?").bind(userId).run();
+
+  const removed = tierRoles.map((r) => r.name).join(", ");
+  return `🧹 Wiped <@${userId}>: ` +
+    (removed ? `removed ${tierRoles.length} tier role${tierRoles.length === 1 ? "" : "s"} (${removed})` : "no tier roles to remove") +
+    ` and cleared ${meta?.changes ?? 0} history entr${meta?.changes === 1 ? "y" : "ies"} (cooldowns and peaks).`;
 }
 
 /* ---------- /username set | reset ---------- */
