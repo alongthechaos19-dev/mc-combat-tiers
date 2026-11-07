@@ -1,7 +1,7 @@
 // ============================================================
 //  MC Combat Tiers — player list
 //  AUTO-GENERATED from Discord by discord-sync/sync.js
-//  Last synced: 11/7/2026, 8:25:31 PM
+//  Last synced: 11/7/2026, 9:43:32 PM
 //
 //  Manual edits here get overwritten next time you sync.
 //  To fix someone's Minecraft name, use website/names.json.
@@ -9,7 +9,7 @@
 
 const PLAYERS = [
   { name: "__gl1tch", region: "NAE", tiers: { vanilla: 4, uhc: 4, mace: 4, cart: 3 } },
-  { name: "_HeroShield", region: "NAC", tiers: { vanilla: 5, smp: 3, axe: 5, mace: 3 } },
+  { name: "_HeroShield", region: "NAC", tiers: { vanilla: 5, smp: 3, axe: 5, mace: 3, cart: 3 } },
   { name: "Blackout4037a", region: "NAW", tiers: { spearmace: 4 } },
   { name: "D҉e҉r҉m҉   (Alerhax)", region: "NAE", tiers: { vanilla: 5, pot: 5, sword: 5, axe: 5 } },
   { name: "Ghost", region: "NAE", tiers: { vanilla: 5, uhc: 5, pot: 5, nethop: 5, sword: 5, axe: 5, diamondsmp: 5 } },
