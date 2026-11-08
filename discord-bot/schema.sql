@@ -18,3 +18,18 @@ CREATE TABLE IF NOT EXISTS usernames (
   at       INTEGER NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_usernames_mc ON usernames (mc_name COLLATE NOCASE);
+
+-- One row per finished cooldown we already DMed about
+CREATE TABLE IF NOT EXISTS retest_reminders (
+  user_id  TEXT    NOT NULL,
+  mode     TEXT    NOT NULL,
+  test_at  INTEGER NOT NULL,
+  sent_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, mode, test_at)
+);
+
+-- Small key/value settings (the website announcement)
+CREATE TABLE IF NOT EXISTS settings (
+  key    TEXT PRIMARY KEY,
+  value  TEXT NOT NULL
+);

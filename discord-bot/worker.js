@@ -15,7 +15,7 @@
 //  change the roles with the bot token (DISCORD_TOKEN secret).
 // ============================================================
 
-import { MODE_NAMES, buildPlayers, parseMode, parseTierRole, points, titleFor } from "../discord-sync/roles.js";
+import { MODE_NAMES, TITLES, buildPlayers, parseMode, parseTierRole, points, titleFor } from "../discord-sync/roles.js";
 
 const API = "https://discord.com/api/v10";
 const DAY = 24 * 60 * 60 * 1000;
@@ -43,12 +43,29 @@ export default {
     // Discord checking that we're online
     if (interaction.type === 1) return json({ type: 1 });
 
+    // After a tier change: fix their rank role and let the website see it straight away
+    const afterTierChange = async (msg) => {
+      const userId = interaction.data.options?.find((o) => o.name === "player")?.value;
+      if (userId) await syncMemberRankRole(env, interaction.guild_id, userId).catch(() => {});
+      await caches.default.delete(new Request(new URL("/api/players", request.url)));
+      return msg;
+    };
+
     if (interaction.type === 2 && interaction.data.name === "tier") {
       // Reply "thinking..." right away (Discord only waits 3 seconds), then finish in the background
       ctx.waitUntil(
         handleTier(interaction, env)
+          .then(afterTierChange)
+          .catch((e) => "❌ " + e.message)
+          .then((msg) => editReply(interaction, msg)),
+      );
+      return json({ type: 5 });
+    }
+
+    if (interaction.type === 2 && interaction.data.name === "announce") {
+      ctx.waitUntil(
+        handleAnnounce(interaction, env)
           .then(async (msg) => {
-            // The website should see the change straight away
             await caches.default.delete(new Request(new URL("/api/players", request.url)));
             return msg;
           })
@@ -70,10 +87,7 @@ export default {
     if (interaction.type === 2 && interaction.data.name === "wipe") {
       ctx.waitUntil(
         handleWipe(interaction, env)
-          .then(async (msg) => {
-            await caches.default.delete(new Request(new URL("/api/players", request.url)));
-            return msg;
-          })
+          .then(afterTierChange)
           .catch((e) => "❌ " + e.message)
           .then((msg) => editReply(interaction, msg)),
       );
@@ -95,7 +109,120 @@ export default {
 
     return json({ type: 4, data: { content: "Unknown command.", flags: 64 } });
   },
+
+  // Runs on the cron schedule in wrangler.toml
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(Promise.allSettled([syncAllRankRoles(env), sendRetestReminders(env)]).then((results) => {
+      for (const r of results) if (r.status === "rejected") console.error(r.reason);
+    }));
+  },
 };
+
+/* ---------- Rank roles (Combat Rookie ... Combat Grandmaster) ---------- */
+
+// The rank a member should have from their tier roles, or null if they have no tiers
+function rankFor(memberRoleIds, roles) {
+  const best = {};
+  for (const r of roles) {
+    const t = memberRoleIds.includes(r.id) && parseTierRole(r.name);
+    if (t && (!best[t.mode] || t.tier < best[t.mode])) best[t.mode] = t.tier;
+  }
+  return Object.keys(best).length ? titleFor(points(best)) : null;
+}
+
+// Gives the right rank role and removes any other rank roles. Returns how many roles changed.
+async function applyRankRole(env, guildId, member, roles) {
+  const rankRoles = roles.filter((r) => TITLES.some((t) => t.name === r.name));
+  const want = rankRoles.find((r) => r.name === rankFor(member.roles, roles));
+  const route = `/guilds/${guildId}/members/${member.user.id}/roles/`;
+  let changes = 0;
+  for (const r of rankRoles) {
+    if (member.roles.includes(r.id) && r.id !== want?.id) { await discord(env, "DELETE", route + r.id, "Rank update"); changes++; }
+  }
+  if (want && !member.roles.includes(want.id)) { await discord(env, "PUT", route + want.id, "Rank update"); changes++; }
+  return changes;
+}
+
+async function syncMemberRankRole(env, guildId, userId) {
+  const [roles, member] = await Promise.all([
+    discord(env, "GET", `/guilds/${guildId}/roles`),
+    discord(env, "GET", `/guilds/${guildId}/members/${userId}`),
+  ]);
+  return applyRankRole(env, guildId, member, roles);
+}
+
+// Catches tier roles that were changed by hand in Discord
+async function syncAllRankRoles(env) {
+  const [roles, members] = await Promise.all([discord(env, "GET", `/guilds/${env.GUILD_ID}/roles`), fetchAllMembers(env)]);
+  let changes = 0;
+  for (const m of members) if (!m.user.bot) changes += await applyRankRole(env, env.GUILD_ID, m, roles);
+  return changes;
+}
+
+/* ---------- Retest reminder DMs ---------- */
+
+// DMs a player when their cooldown in a gamemode ends (once per test)
+async function sendRetestReminders(env) {
+  const cooldownMs = Number(env.COOLDOWN_DAYS) * DAY;
+  const now = Date.now();
+  const { results } = await env.DB.prepare(
+    "SELECT h.user_id, h.mode, MAX(h.at) AS at FROM tier_history h WHERE h.tier > 0 GROUP BY h.user_id, h.mode",
+  ).all();
+  let sent = 0;
+  for (const row of results) {
+    const readyAt = row.at + cooldownMs;
+    // Only cooldowns that ended in the last 2 days, so old tests don't all fire at once
+    if (readyAt > now || readyAt < now - 2 * DAY) continue;
+    const { meta } = await env.DB.prepare(
+      "INSERT OR IGNORE INTO retest_reminders (user_id, mode, test_at, sent_at) VALUES (?, ?, ?, ?)",
+    ).bind(row.user_id, row.mode, row.at, now).run();
+    if (!meta?.changes) continue; // already reminded for this test
+    try {
+      const dm = await discord(env, "POST", "/users/@me/channels", null, { recipient_id: row.user_id });
+      await discord(env, "POST", `/channels/${dm.id}/messages`, null, {
+        content: `⏰ Your **${MODE_NAMES[row.mode]}** cooldown is over! You can retest in **MC Combat Tiers** now.`,
+      });
+      sent++;
+    } catch {
+      // DMs closed: skip, it's still marked as reminded
+    }
+  }
+  return sent;
+}
+
+/* ---------- /announce set | clear (website banner) ---------- */
+
+async function handleAnnounce(interaction, env) {
+  const roles = await discord(env, "GET", `/guilds/${interaction.guild_id}/roles`);
+  if (!hasAnyRole(interaction.member, roles, env.ANNOUNCE_ROLES)) throw new Error(`Only ${env.ANNOUNCE_ROLES} can use /announce.`);
+
+  const sub = interaction.data.options?.[0];
+  if (sub?.name === "clear") {
+    await env.DB.prepare("DELETE FROM settings WHERE key = 'announcement'").run();
+    return "🧹 The website announcement was removed.";
+  }
+
+  const text = String(sub?.options?.find((o) => o.name === "message")?.value || "").trim();
+  if (!text) throw new Error("Write a message to announce.");
+  const announcement = { text, by: interaction.member.user.username, at: Date.now() };
+  await env.DB.prepare(
+    "INSERT INTO settings (key, value) VALUES ('announcement', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).bind(JSON.stringify(announcement)).run();
+
+  return {
+    embeds: [{
+      title: "📢 Announcement",
+      description: text,
+      color: 0xf5c542,
+      footer: { text: `Posted by ${announcement.by} · Also shown on mc-combat-tiers.pages.dev` },
+    }],
+  };
+}
+
+async function currentAnnouncement(env) {
+  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'announcement'").first();
+  return row ? JSON.parse(row.value) : null;
+}
 
 /* ---------- /tier ---------- */
 
@@ -217,8 +344,8 @@ async function playersApi(request, env, ctx) {
   const cached = await caches.default.match(cacheKey);
   if (cached) return cached;
 
-  const players = await livePlayers(env);
-  const res = new Response(JSON.stringify({ players, updated: Date.now() }), {
+  const [players, announcement] = await Promise.all([livePlayers(env), currentAnnouncement(env)]);
+  const res = new Response(JSON.stringify({ players, announcement, updated: Date.now() }), {
     headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": `public, max-age=${PLAYERS_CACHE_SECONDS}` },
   });
   ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
@@ -390,10 +517,11 @@ async function fetchAllMembers(env) {
 
 /* ---------- Discord helpers ---------- */
 
-async function discord(env, method, route, reason) {
+async function discord(env, method, route, reason, body) {
   const headers = { Authorization: `Bot ${env.DISCORD_TOKEN}` };
   if (reason) headers["X-Audit-Log-Reason"] = encodeURIComponent(reason);
-  const res = await fetch(API + route, { method, headers });
+  if (body) headers["Content-Type"] = "application/json";
+  const res = await fetch(API + route, { method, headers, body: body && JSON.stringify(body) });
   if (res.ok) return res.status === 204 ? null : res.json();
   if (res.status === 401) throw new Error("The bot token is wrong. Update the DISCORD_TOKEN secret in Cloudflare.");
   if (res.status === 403) {

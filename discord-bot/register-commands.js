@@ -40,6 +40,18 @@ const COMMANDS = [
     ],
   },
   {
+    name: "announce",
+    description: "Owner/Administrator only: post an announcement here and on the website",
+    contexts: [0],
+    options: [
+      {
+        type: 1, name: "set", description: "Post a new announcement (replaces the old one)",
+        options: [{ type: 3, name: "message", description: "What to announce", required: true, max_length: 300 }],
+      },
+      { type: 1, name: "clear", description: "Remove the announcement from the website" },
+    ],
+  },
+  {
     name: "wipe",
     description: "Owner only: remove all of a player's tiers, cooldowns and peaks",
     contexts: [0],

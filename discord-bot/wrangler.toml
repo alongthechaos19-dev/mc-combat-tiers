@@ -23,6 +23,12 @@ WIPE_ROLES = "Owner"
 # Website filter buttons: who counts as Staff and as Creators
 STAFF_ROLES = "Owner, Staff"
 CREATOR_ROLES = "Creator"
+# Only these roles can use /announce
+ANNOUNCE_ROLES = "Owner, Administrator"
+
+# Every 15 minutes: fix rank roles changed by hand, and DM players whose cooldown ended
+[triggers]
+crons = ["*/15 * * * *"]
 
 # Tier history (peak tiers + cooldowns)
 [[d1_databases]]

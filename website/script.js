@@ -289,12 +289,35 @@ window.addEventListener("hashchange", route);
 renderFilters();
 route();
 
+/* ---------- Announcement banner (set with /announce in Discord) ---------- */
+let announcement = null;
+const DISMISS_KEY = "mct-dismissed-announcement";
+
+function renderAnnouncement() {
+  const box = $("#announce");
+  let dismissed = null;
+  try { dismissed = localStorage.getItem(DISMISS_KEY); } catch {}
+  if (!announcement || String(announcement.at) === dismissed) { box.hidden = true; return; }
+  box.innerHTML = `<span class="announce-icon">📢</span><span class="announce-text">${esc(announcement.text)}</span>
+    <button class="announce-close" aria-label="Hide announcement">&times;</button>`;
+  box.hidden = false;
+}
+$("#announce").addEventListener("click", (e) => {
+  if (!e.target.closest(".announce-close")) return;
+  try { localStorage.setItem(DISMISS_KEY, String(announcement.at)); } catch {}
+  $("#announce").hidden = true;
+});
+
 /* ---------- Live updates ---------- */
 async function loadLive() {
   try {
     const res = await fetch(LIVE_API);
     if (!res.ok) return;
     const data = await res.json();
+    if (JSON.stringify(data.announcement) !== JSON.stringify(announcement)) {
+      announcement = data.announcement;
+      renderAnnouncement();
+    }
     if (JSON.stringify(data.players) === JSON.stringify(players)) return;
     players = data.players;
     route();

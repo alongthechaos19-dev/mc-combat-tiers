@@ -112,5 +112,5 @@ function buildPlayers(roles, members, nameOverrides = {}, groups = {}) {
   return { players, tierRoleCount: tierRoles.size, unknown };
 }
 
-module.exports = { MODE_ORDER, MODE_NAMES, TIER_POINTS, points, titleFor, parseMode, parseTierRole, parseRegionRole, buildPlayers };
+module.exports = { MODE_ORDER, MODE_NAMES, TIER_POINTS, TITLES, points, titleFor, parseMode, parseTierRole, parseRegionRole, buildPlayers };
 
