@@ -328,3 +328,24 @@ async function loadLive() {
 }
 loadLive();
 setInterval(loadLive, REFRESH_SECONDS * 1000);
+
+/* ---------- Installable app ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+
+// Chrome/Edge/Android tell us when the site can be installed; show our button then
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $("#install-btn").hidden = false;
+});
+$("#install-btn").addEventListener("click", async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $("#install-btn").hidden = true;
+});
+window.addEventListener("appinstalled", () => { $("#install-btn").hidden = true; });
