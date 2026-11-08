@@ -217,6 +217,9 @@ function openInfo() {
         ${TITLES.map((r) => `
           <div class="info-rank"><span class="title title-${r.cls}">${r.name}</span><span>${r.min}+ points</span></div>`).join("")}
       </div>
+
+      <h3>Testing</h3>
+      <p class="info-sub">After a test you must wait <b>2 weeks</b> before you can retest in the same gamemode. Your profile shows the date you can retest.</p>
     </div>`;
   $("#modal").hidden = false;
 }

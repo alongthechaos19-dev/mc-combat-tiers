@@ -189,7 +189,7 @@ async function sendRetestReminders(env) {
     try {
       const dm = await discord(env, "POST", "/users/@me/channels", null, { recipient_id: row.user_id });
       await discord(env, "POST", `/channels/${dm.id}/messages`, null, {
-        content: `⏰ Your **${MODE_NAMES[row.mode]}** cooldown is over! You can retest in **MC Combat Tiers** now.`,
+        content: `⏰ Your **${MODE_NAMES[row.mode]}** 2-week cooldown is over! You can retest in **MC Combat Tiers** now.`,
       });
       sent++;
     } catch {

@@ -25,7 +25,7 @@ const COMMANDS = [
         choices: [1, 2, 3, 4, 5].map((n) => ({ name: `Tier ${n}`, value: n }))
           .concat({ name: "Remove tier", value: 0 }),
       },
-      { type: 5, name: "ignore_cooldown", description: "Staff/Owner only: retest before the cooldown is over", required: false },
+      { type: 5, name: "ignore_cooldown", description: "Staff/Owner only: retest before the 2-week cooldown is over", required: false },
     ],
   },
   {

@@ -13,7 +13,7 @@ TESTER_ROLE_PREFIX = "Verified Tester"
 # These roles can tier every gamemode (comma separated, exact role names)
 ALL_MODES_ROLES = "Owner, Staff, Temporary Tester (All Gamemodes)"
 # Days before a player can be retested in the same gamemode
-COOLDOWN_DAYS = "7"
+COOLDOWN_DAYS = "14"
 # These roles can use /tier ignore_cooldown:True
 COOLDOWN_OVERRIDE_ROLES = "Owner, Staff"
 # Only these roles can give (or change) T1 and T2. Testers can give T3-T5.
