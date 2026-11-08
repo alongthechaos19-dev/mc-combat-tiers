@@ -62,6 +62,15 @@ export default {
       return json({ type: 5 });
     }
 
+    if (interaction.type === 2 && interaction.data.name === "requesttest") {
+      ctx.waitUntil(
+        handleRequestTest(interaction, env)
+          .catch((e) => "❌ " + e.message)
+          .then((msg) => editReply(interaction, msg)),
+      );
+      return json({ type: 5 });
+    }
+
     if (interaction.type === 2 && interaction.data.name === "announce") {
       ctx.waitUntil(
         handleAnnounce(interaction, env)
@@ -188,6 +197,86 @@ async function sendRetestReminders(env) {
     }
   }
   return sent;
+}
+
+/* ---------- /requesttest (inside a Tickets v2 ticket) ---------- */
+
+// View channel + send messages + embed links + attach files + read history
+const TICKET_TESTER_ALLOW = String((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 15n) | (1n << 16n));
+
+async function handleRequestTest(interaction, env) {
+  const mode = interaction.data.options?.find((o) => o.name === "gamemode")?.value;
+  const modeName = MODE_NAMES[mode];
+  const channelId = interaction.channel_id;
+  const channelName = interaction.channel?.name || "";
+  if (!channelName.startsWith(env.TICKET_PREFIX)) {
+    throw new Error("Open a ticket first, then use **/requesttest** inside it.");
+  }
+
+  const member = interaction.member;
+  const roles = await discord(env, "GET", `/guilds/${interaction.guild_id}/roles`);
+  const isStaff = hasAnyRole(member, roles, env.HIGH_TIER_ROLES);
+
+  // One tester per ticket; Staff/Owner can run it again to reroll
+  const existing = await env.DB.prepare("SELECT * FROM test_requests WHERE channel_id = ?").bind(channelId).first();
+  if (existing && !isStaff) {
+    throw new Error(`<@${existing.tester_id}> is already assigned to this ticket for **${MODE_NAMES[existing.mode]}**.`);
+  }
+  // The player is whoever asked first (Staff rerolling keeps the same player)
+  const playerId = existing ? existing.user_id : member.user.id;
+
+  // Cooldown (same rule as /tier)
+  const last = await env.DB.prepare(
+    "SELECT MAX(at) AS at FROM tier_history WHERE user_id = ? AND mode = ? AND tier > 0",
+  ).bind(playerId, mode).first();
+  const readyAt = last?.at ? last.at + Number(env.COOLDOWN_DAYS) * DAY : 0;
+  if (readyAt > Date.now()) {
+    throw new Error(`<@${playerId}> can't retest in **${modeName}** until <t:${Math.floor(readyAt / 1000)}:D> (<t:${Math.floor(readyAt / 1000)}:R>).`);
+  }
+
+  // Testers can't change T1/T2 players, so those tests need Staff
+  const player = await discord(env, "GET", `/guilds/${interaction.guild_id}/members/${playerId}`);
+  const current = roles
+    .filter((r) => player.roles.includes(r.id) && parseTierRole(r.name)?.mode === mode)
+    .map((r) => parseTierRole(r.name).tier);
+  if (current.some((t) => t <= 2)) {
+    throw new Error(`<@${playerId}> is **T${Math.min(...current)} ${modeName}**. High tier tests are done by ${env.HIGH_TIER_ROLES}, so please ping them here.`);
+  }
+
+  // Random "Verified Tester - <gamemode>", never the player or the previous tester
+  const testerRoleIds = roles.filter((r) => testerRoleMode(r.name, env) === mode).map((r) => r.id);
+  const members = await fetchAllMembers(env);
+  const pool = members.filter((m) => !m.user.bot && m.user.id !== playerId && m.user.id !== existing?.tester_id &&
+    m.roles.some((id) => testerRoleIds.includes(id)));
+  if (!pool.length) {
+    throw new Error(`There are no ${existing ? "other " : ""}**${modeName}** testers available right now. Please ping Staff.`);
+  }
+  const tester = pool[Math.floor(Math.random() * pool.length)].user;
+
+  // Swap testers on a reroll, then let the new tester into the ticket
+  if (existing && existing.tester_id !== tester.id) {
+    await discord(env, "DELETE", `/channels/${channelId}/permissions/${existing.tester_id}`, "Tester rerolled").catch(() => {});
+  }
+  await discord(env, "PUT", `/channels/${channelId}/permissions/${tester.id}`, `/requesttest ${modeName}`,
+    { type: 1, allow: TICKET_TESTER_ALLOW, deny: "0" });
+
+  await env.DB.prepare(
+    "INSERT INTO test_requests (channel_id, user_id, mode, tester_id, at) VALUES (?, ?, ?, ?, ?) " +
+    "ON CONFLICT(channel_id) DO UPDATE SET mode = excluded.mode, tester_id = excluded.tester_id, at = excluded.at",
+  ).bind(channelId, playerId, mode, tester.id, Date.now()).run();
+
+  await logEvent(env, {
+    title: existing ? "Tester rerolled" : "Test requested",
+    color: 0x6fbfdd,
+    description: `<@${playerId}> · **${modeName}** → tester <@${tester.id}>` + (existing ? ` (was <@${existing.tester_id}>, by <@${member.user.id}>)` : ""),
+    fields: [{ name: "Ticket", value: `<#${channelId}>`, inline: true }],
+  });
+
+  return {
+    content: `🎯 <@${tester.id}>, you've been assigned to test <@${playerId}> in **${modeName}**.\n` +
+      `When you're done, use **/tier** to give their result.`,
+    allowed_mentions: { users: [tester.id, playerId] },
+  };
 }
 
 /* ---------- /announce set | clear (website banner) ---------- */
@@ -582,7 +671,8 @@ async function editReply(interaction, reply) {
   await fetch(`${API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...message, allowed_mentions: { parse: [] } }),
+    // Nobody gets pinged unless the reply says who (e.g. /requesttest pings the tester)
+    body: JSON.stringify({ allowed_mentions: { parse: [] }, ...message }),
   });
 }
 

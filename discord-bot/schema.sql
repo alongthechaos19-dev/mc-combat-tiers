@@ -33,3 +33,12 @@ CREATE TABLE IF NOT EXISTS settings (
   key    TEXT PRIMARY KEY,
   value  TEXT NOT NULL
 );
+
+-- Which tester /requesttest assigned to each ticket
+CREATE TABLE IF NOT EXISTS test_requests (
+  channel_id  TEXT PRIMARY KEY,
+  user_id     TEXT    NOT NULL,
+  mode        TEXT    NOT NULL,
+  tester_id   TEXT    NOT NULL,
+  at          INTEGER NOT NULL
+);

@@ -40,6 +40,17 @@ const COMMANDS = [
     ],
   },
   {
+    name: "requesttest",
+    description: "Use inside your ticket: get a random tester for a gamemode",
+    contexts: [0],
+    options: [
+      {
+        type: 3, name: "gamemode", description: "Gamemode you want to be tested in", required: true,
+        choices: MODE_ORDER.map((k) => ({ name: MODE_NAMES[k], value: k })),
+      },
+    ],
+  },
+  {
     name: "announce",
     description: "Owner/Administrator only: post an announcement here and on the website",
     contexts: [0],

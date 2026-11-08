@@ -27,6 +27,8 @@ CREATOR_ROLES = "Creator"
 ANNOUNCE_ROLES = "Owner, Administrator"
 # Staff log channel (right-click the channel -> Copy Channel ID). Empty = no logging.
 LOG_CHANNEL_ID = ""
+# /requesttest only works in channels whose name starts with this (Tickets v2 tickets)
+TICKET_PREFIX = "ticket-"
 
 # Every 15 minutes: fix rank roles changed by hand, and DM players whose cooldown ended
 [triggers]
