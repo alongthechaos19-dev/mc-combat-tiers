@@ -25,6 +25,8 @@ STAFF_ROLES = "Owner, Staff"
 CREATOR_ROLES = "Creator"
 # Only these roles can use /announce
 ANNOUNCE_ROLES = "Owner, Administrator"
+# Staff log channel (right-click the channel -> Copy Channel ID). Empty = no logging.
+LOG_CHANNEL_ID = ""
 
 # Every 15 minutes: fix rank roles changed by hand, and DM players whose cooldown ended
 [triggers]

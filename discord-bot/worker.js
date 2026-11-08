@@ -199,6 +199,7 @@ async function handleAnnounce(interaction, env) {
   const sub = interaction.data.options?.[0];
   if (sub?.name === "clear") {
     await env.DB.prepare("DELETE FROM settings WHERE key = 'announcement'").run();
+    await logEvent(env, { title: "Announcement cleared", color: 0x8a90a6, description: `by <@${interaction.member.user.id}>` });
     return "🧹 The website announcement was removed.";
   }
 
@@ -209,6 +210,7 @@ async function handleAnnounce(interaction, env) {
     "INSERT INTO settings (key, value) VALUES ('announcement', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   ).bind(JSON.stringify(announcement)).run();
 
+  await logEvent(env, { title: "Announcement posted", color: 0xf5c542, description: `by <@${interaction.member.user.id}>\n\n${text}` });
   return {
     embeds: [{
       title: "📢 Announcement",
@@ -306,6 +308,19 @@ async function handleTier(interaction, env) {
   await env.DB.prepare(
     "INSERT INTO tier_history (user_id, mode, tier, prev_tier, tester_id, at) VALUES (?, ?, ?, ?, ?, ?)",
   ).bind(userId, mode, tier, prevTier, tester.id, Date.now()).run();
+
+  // Staff log: green = tier up, red = tier down / removed, gray = same
+  const change = !tier ? `removed (was T${prevTier})` : prevTier ? `T${prevTier} → **T${tier}**` : `new: **T${tier}**`;
+  const color = !tier || (prevTier && tier > prevTier) ? 0xef4444 : prevTier === tier ? 0x8a90a6 : 0x22c55e;
+  await logEvent(env, {
+    title: "Tier change",
+    color,
+    description: `<@${userId}> · **${modeName}**: ${change}`,
+    fields: [
+      { name: "Tester", value: `<@${tester.id}>`, inline: true },
+      ...(opts.ignore_cooldown ? [{ name: "Cooldown", value: "Skipped", inline: true }] : []),
+    ],
+  });
 
   const oldTiers = toRemove.map((r) => "T" + parseTierRole(r.name).tier).join(", ");
   if (!tier) return `🗑️ Removed <@${userId}>'s **${modeName}** tier (was ${oldTiers}).`;
@@ -410,6 +425,15 @@ async function handleWipe(interaction, env) {
   const { meta } = await env.DB.prepare("DELETE FROM tier_history WHERE user_id = ?").bind(userId).run();
 
   const removed = tierRoles.map((r) => r.name).join(", ");
+  await logEvent(env, {
+    title: "Player wiped",
+    color: 0xef4444,
+    description: `<@${userId}> was wiped by <@${interaction.member.user.id}>`,
+    fields: [
+      { name: "Tier roles removed", value: removed || "None" },
+      { name: "History cleared", value: `${meta?.changes ?? 0} entries (cooldowns and peaks)`, inline: true },
+    ],
+  });
   return `🧹 Wiped <@${userId}>: ` +
     (removed ? `removed ${tierRoles.length} tier role${tierRoles.length === 1 ? "" : "s"} (${removed})` : "no tier roles to remove") +
     ` and cleared ${meta?.changes ?? 0} history entr${meta?.changes === 1 ? "y" : "ies"} (cooldowns and peaks).`;
@@ -434,6 +458,7 @@ async function handleUsername(interaction, env) {
 
   if (sub?.name === "reset") {
     await env.DB.prepare("DELETE FROM usernames WHERE user_id = ?").bind(target).run();
+    await logEvent(env, { title: "Username reset", color: 0x8a90a6, description: `<@${target}> · reset by <@${me}>` });
     return `✅ ${who} Minecraft username was removed. The website goes back to the default name.`;
   }
 
@@ -456,6 +481,11 @@ async function handleUsername(interaction, env) {
     "ON CONFLICT(user_id) DO UPDATE SET mc_name = excluded.mc_name, set_by = excluded.set_by, at = excluded.at",
   ).bind(target, mcName, me, Date.now()).run();
 
+  await logEvent(env, {
+    title: "Username set",
+    color: 0x38bdf8,
+    description: `<@${target}> → **${mcName}**` + (target !== me ? ` · set by <@${me}>` : ""),
+  });
   return `✅ ${who} Minecraft username is now **${mcName}**. The website shows it right away.`;
 }
 
@@ -512,6 +542,21 @@ async function fetchAllMembers(env) {
     all.push(...page);
     if (page.length < 1000) return all;
     after = page[page.length - 1].user.id;
+  }
+}
+
+/* ---------- Staff log channel ---------- */
+
+// Posts an embed in LOG_CHANNEL_ID. Never throws: a broken log channel must not break commands.
+async function logEvent(env, embed) {
+  if (!env.LOG_CHANNEL_ID) return;
+  try {
+    await discord(env, "POST", `/channels/${env.LOG_CHANNEL_ID}/messages`, null, {
+      embeds: [{ ...embed, timestamp: new Date().toISOString() }],
+      allowed_mentions: { parse: [] },
+    });
+  } catch (e) {
+    console.error("Staff log failed:", e.message);
   }
 }
 
