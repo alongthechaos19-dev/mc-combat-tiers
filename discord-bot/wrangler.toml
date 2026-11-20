@@ -1,5 +1,7 @@
 name = "mc-combat-tiers-bot"
 main = "worker.js"
+# Always deploy to the MC Combat Tiers Cloudflare account
+account_id = "f41a51aa14bbba07eb78a79ac9f3e5e9"
 compatibility_date = "2025-06-01"
 
 [vars]
