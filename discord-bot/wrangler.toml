@@ -12,6 +12,11 @@ SITE_URL = "https://mc-combat-tiers.pages.dev"
 TESTER_ROLE_PREFIX = "Verified Tester"
 # These roles can tier every gamemode (comma separated, exact role names)
 ALL_MODES_ROLES = "Owner, Staff, Temporary Tester (All Gamemodes)"
+# Auto roles: T3+ for anyone T3 or better in any gamemode,
+# Tester for anyone with a "Verified Tester - ..." role or one of TESTER_EXTRA_ROLES
+T3PLUS_ROLE = "T3+"
+TESTER_ROLE = "Tester"
+TESTER_EXTRA_ROLES = "Temporary Tester (All Gamemodes)"
 # Days before a player can be retested in the same gamemode
 COOLDOWN_DAYS = "14"
 # These roles can use /tier ignore_cooldown:True

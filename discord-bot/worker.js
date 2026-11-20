@@ -149,8 +149,24 @@ async function applyRankRole(env, guildId, member, roles) {
     if (member.roles.includes(r.id) && r.id !== want?.id) { await discord(env, "DELETE", route + r.id, "Rank update"); changes++; }
   }
   if (want && !member.roles.includes(want.id)) { await discord(env, "PUT", route + want.id, "Rank update"); changes++; }
+
+  // Badge roles: "T3+" for anyone T3 or better in any gamemode, "Tester" for anyone with a tester role
+  const has = (test) => roles.some((r) => member.roles.includes(r.id) && test(r.name));
+  const badges = [
+    [env.T3PLUS_ROLE, has((n) => (parseTierRole(n)?.tier ?? 9) <= 3)],
+    [env.TESTER_ROLE, has((n) => n.startsWith(env.TESTER_ROLE_PREFIX + " - ") || listHas(env.TESTER_EXTRA_ROLES, n))],
+  ];
+  for (const [name, should] of badges) {
+    const role = name && roles.find((r) => r.name === name);
+    if (!role) continue;
+    const got = member.roles.includes(role.id);
+    if (should && !got) { await discord(env, "PUT", route + role.id, "Auto role"); changes++; }
+    if (!should && got) { await discord(env, "DELETE", route + role.id, "Auto role"); changes++; }
+  }
   return changes;
 }
+
+const listHas = (list, name) => String(list || "").split(",").map((s) => s.trim().toLowerCase()).includes(name.toLowerCase());
 
 async function syncMemberRankRole(env, guildId, userId) {
   const [roles, member] = await Promise.all([
